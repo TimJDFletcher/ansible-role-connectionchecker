@@ -1,0 +1,31 @@
+---
+# tasks file for roles/connectionchecker
+- name: Install wget
+  become: true
+  apt:
+    name: wget
+    state: installed
+
+- name: Copy over script to check connections
+  become: true
+  template:
+    src: script.j2
+    dest: "{{ connectionchecker_script_path }}"
+    mode: 0755
+    owner: root
+    group: root
+
+- name: Copy over crontab file
+  become: true
+  template:
+    src: cron.j2
+    dest: "/etc/cron.d/{{ connectionchecker_cron_file }}"
+    mode: 0444
+    owner: root
+    group: root
+
+- name: Remove old script
+  become: true
+  file:
+    dest: /usr/local/bin/connection-checker.sh
+    state: absent

@@ -1,0 +1,13 @@
+---
+# defaults file for roles/connectionchecker
+connectionchecker_script_path: /usr/local/bin/connectionchecker.sh
+connectionchecker_cron_file: connectionchecker
+# Note this is in minutes
+connectionchecker_cron_interval: 5
+connectionchecker_cron_user: root
+connectionchecker_locktime: 300
+connectionchecker_failcount: 3
+connectionchecker_ping_target: 172.17.0.1
+connectionchecker_url_target: "https://google.co.uk"
+connectionchecker_interface: "{{ ansible_default_ipv4.interface }}"
+connectionchecker_openvpn_restart_command: service openvpn restart

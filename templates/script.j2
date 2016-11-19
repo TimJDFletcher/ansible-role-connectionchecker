@@ -1,0 +1,86 @@
+#!/bin/sh
+PATH="/usr/sbin:/usr/bin:/sbin:/bin"
+logname=$(basename $0 .sh)
+statefile=/var/run/${logname}.state
+lockfile=/var/run/${logname}.lock
+locktime={{ connectionchecker_locktime }}
+maxfail={{ connectionchecker_failcount }}
+time=$(date +%s)
+
+if [ -f $statefile ] ; then
+    count=$(cat $statefile)
+    lastruntime=$(date +%s -r $statefile)
+else
+    count=1
+    lastruntime=$time
+fi
+
+testcmd()
+{
+    if ! wget -q {{ connectionchecker_url_target }} -O /dev/null ; then
+        export url_fail=1
+        export exit=1
+        logger -t $logname URL connection to {{ connectionchecker_url_target }} failed
+        break
+    elif ! ping -c 2 {{ connectionchecker_ping_target }} -q 2>&1 > /dev/null ; then
+        export ping_fail=1
+        export exit=1
+        logger -t $logname ICMP failed to {{ connectionchecker_ping_target }}
+        break
+    else
+        export url_fail=0
+        export ping_fail=0
+        export exit=0
+    fi
+}
+
+resetcmd()
+{
+    ifdown {{ connectionchecker_interface }}
+    sleep 10s
+    ifup {{ connectionchecker_interface }}
+    sleep 10s
+    {{ connectionchecker_openvpn_restart_command }}
+}
+
+case $1 in
+    failtest)
+        echo testing reset process
+        resetcmd
+        ;;
+esac
+
+if [ -f $lockfile ] ; then
+    if [ $time -gt $(($time-$locktime)) ] ; then
+        logger -t $logname Lock file over $locktime seconds old, assuming something has broken calling reset
+        count=0
+        resetcmd
+        exit=$?
+    else
+        logger -t $logname I already appear to be running, remove $lockfile if this is wrong
+        exit 1
+    fi
+fi
+
+# Touch the lockfile
+touch $lockfile
+
+# Test the connection
+testcmd
+
+if [ $exit -gt 0 ] ; then
+    count=$((count+1))
+    logger -t $logname present failure count is $count
+else
+    count=0
+fi
+
+if [ $count -ge $maxfail ] ; then
+    count=0
+    logger -t $logname Check failed $maxfail times, reseting connection
+    resetcmd
+fi
+
+echo $count > $statefile
+rm -f $lockfile
+exit $exit
