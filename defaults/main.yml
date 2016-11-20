@@ -10,4 +10,4 @@ connectionchecker_failcount: 3
 connectionchecker_ping_target: 172.17.0.1
 connectionchecker_url_target: "https://google.co.uk"
 connectionchecker_interface: "{{ ansible_default_ipv4.interface }}"
-connectionchecker_openvpn_restart_command: service openvpn restart
+connectionchecker_service_restart_command: 
