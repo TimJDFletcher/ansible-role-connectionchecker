@@ -1,36 +1,37 @@
-#!/bin/sh
+#!/bin/shç
+# {{ ansible_managed }}
 PATH="/usr/sbin:/usr/bin:/sbin:/bin"
-logname=$(basename $0 .sh)
-statefile=/var/run/${logname}.state
-lockfile=/var/run/${logname}.lock
-locktime={{ connectionchecker_locktime }}
-maxfail={{ connectionchecker_failcount }}
-time=$(date +%s)
+LOGNAME=$(basename $0 .sh)
+STATEFILE=/var/run/${LOGNAME}.state
+LOCKFILE=/var/run/${LOGNAME}.lock
+LOCKTIME={{ connectionchecker_locktime }}
+MAXFILE={{ connectionchecker_failcount }}
+EPOCHTIME=$(date +%s)
 
-if [ -f $statefile ] ; then
-    count=$(cat $statefile)
-    lastruntime=$(date +%s -r $statefile)
+if [ -f $STATEFILE ] ; then
+    COUNT=$(cat $STATEFILE)
+    LASTRUNTIME=$(date +%s -r $STATEFILE)
 else
-    count=1
-    lastruntime=$time
+    COUNT=1
+    LASTRUNTIME=$EPOCHTIME
 fi
 
 testcmd()
 {
     if ! wget -q {{ connectionchecker_url_target }} -O /dev/null ; then
-        export url_fail=1
-        export exit=1
-        logger -t $logname URL connection to {{ connectionchecker_url_target }} failed
+        export URL_FAIL=1
+        export EXIT=1
+        logger -t $LOGNAME URL connection to {{ connectionchecker_url_target }} failed
         break
     elif ! ping -c 2 {{ connectionchecker_ping_target }} -q 2>&1 > /dev/null ; then
-        export ping_fail=1
-        export exit=1
-        logger -t $logname ICMP failed to {{ connectionchecker_ping_target }}
+        export PING_FAIL=1
+        export EXIT=1
+        logger -t $LOGNAME ICMP failed to {{ connectionchecker_ping_target }}
         break
     else
-        export url_fail=0
-        export ping_fail=0
-        export exit=0
+        export URL_FAIL=0
+        export PING_FAIL=0
+        export EXIT=0
     fi
 }
 
@@ -40,7 +41,7 @@ resetcmd()
     sleep 10s
     ifup {{ connectionchecker_interface }}
     sleep 10s
-    {{ connectionchecker_openvpn_restart_command }}
+    {{ connectionchecker_service_restart_command }}
 }
 
 case $1 in
@@ -50,37 +51,37 @@ case $1 in
         ;;
 esac
 
-if [ -f $lockfile ] ; then
-    if [ $time -gt $(($time-$locktime)) ] ; then
-        logger -t $logname Lock file over $locktime seconds old, assuming something has broken calling reset
-        count=0
+if [ -f $LOCKFILE ] ; then
+    if [ $EPOCHTIME -gt $(($LASTRUNTIME-$LOCKTIME)) ] ; then
+        logger -t $LOGNAME Lock file over $LOCKTIME seconds old, assuming something has broken calling reset command
+        COUNT=0
         resetcmd
-        exit=$?
+        EXIT=$?
     else
-        logger -t $logname I already appear to be running, remove $lockfile if this is wrong
+        logger -t $LOGNAME I already appear to be running, remove $LOCKFILE if this is wrong
         exit 1
     fi
 fi
 
-# Touch the lockfile
-touch $lockfile
+# Touch the LOCKFILE
+touch $LOCKFILE
 
 # Test the connection
 testcmd
 
-if [ $exit -gt 0 ] ; then
-    count=$((count+1))
-    logger -t $logname present failure count is $count
+if [ $EXIT -gt 0 ] ; then
+    COUNT=$((COUNT+1))
+    logger -t $LOGNAME present failure COUNT is $COUNT
 else
-    count=0
+    COUNT=0
 fi
 
-if [ $count -ge $maxfail ] ; then
-    count=0
-    logger -t $logname Check failed $maxfail times, reseting connection
+if [ $COUNT -ge $MAXFILE ] ; then
+    COUNT=0
+    logger -t $LOGNAME Check failed $MAXFILE times, reseting connection
     resetcmd
 fi
 
-echo $count > $statefile
-rm -f $lockfile
-exit $exit
+echo $COUNT > $STATEFILE
+rm -f $LOCKFILE
+exit $EXIT
