@@ -4,7 +4,7 @@
   become: true
   apt:
     name: wget
-    state: installed
+    state: present
 
 - name: Copy over script to check connections
   become: true
